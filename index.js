@@ -18,12 +18,12 @@ app.get("/", (req, res) => {
 const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
     if (!authorization) {
-        return res.status(401).send({ error: true, message: "unauthorized access" });
+        return res.status(401).send({ error: true, message: "unauthorized ub access" });
     }
     const token = authorization.split(' ')[1];
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(401).send({ error: true, message: "unauthorized access" });
+            return res.status(402).send({ error: true, message: "Token Problem access" });
         }
         req.decoded = decoded;
         next();
@@ -126,18 +126,78 @@ async function run() {
         /********Borrow Request POST API*******/
         app.post("/borrowRequest", verifyJWT, async (req, res) => {
             const borrowRequestDetails = req.body;
-            const result = await borrowCollections.insertOne(borrowRequestDetails);
-            res.send(result);
 
-        })
+            // Step 1: Insert borrow request into borrowCollections
+            const borrowResult = await borrowCollections.insertOne(borrowRequestDetails);
+            if (borrowResult.insertedId) {
+                // Step 2: Decrement copiesAvailable in bookCollections
+                const bookId = borrowRequestDetails.bookId; // Assuming the book ID is provided in borrowRequestDetails
+                const book = await bookCollections.findOne({ _id: new ObjectId(bookId) });
+
+                if (book) {
+                    if (book.copiesAvailable > 0) {
+                        // Decrement copiesAvailable if there are available copies
+                        await bookCollections.updateOne(
+                            { _id: new ObjectId(bookId) },
+                            { $set: { copiesAvailable: book.copiesAvailable - 1 } }
+                        );
+
+                        res.send({ message: "success" });
+                    } else {
+                        res.status(400).send({ error: "No available copies of the book." });
+                    }
+                } else {
+                    res.status(404).send({ error: "Book not found." });
+                }
+            } else {
+                res.status(500).send({ error: "Failed to create borrow request." });
+            }
+        });
+
+
         /********Borrow Request GET API*******/
-        app.get("/borrowRequest/:email", async (req, res) => {
+        app.get("/allborrowRequest", async (req, res) => {
+            try {
+                const result = await borrowCollections.find().sort({ _id: -1 }).toArray();
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send("Error fetching borrow requests.");
+            }
+        });
+
+        /********Borrow Request GET API by email*******/
+        app.get("/borrowRequest/:email", verifyJWT, async (req, res) => {
             const email = req.params.email;
             const query = { requesteredEmail: email }
             const result = await borrowCollections.find(query).toArray();
             res.send(result);
 
         })
+        /********Borrow Request status Update PUT API*******/
+        app.put("/updateBorrowRequestStatus/:id", async (req, res) => {
+            const requestId = req.params.id;
+            const { status } = req.body;
+            console.log(req.body);
+            try {
+                // Update the requestStatus of the borrow request with the provided ID
+                const result = await borrowCollections.updateOne(
+                    { _id: new ObjectId(requestId) },
+                    { $set: { status } }
+                );
+
+                if (result.modifiedCount === 1) {
+                    res.status(200).json({ message: "success" });
+                } else {
+                    res.status(404).json({ message: "Borrow request not found." });
+                }
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "An error occurred while updating borrow request status." });
+            }
+        });
+
+
 
 
         // Send a ping to confirm a successful connection
