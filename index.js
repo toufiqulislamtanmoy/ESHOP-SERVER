@@ -3,7 +3,7 @@ const app = express();
 const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 5000
 
@@ -50,6 +50,7 @@ async function run() {
         client.connect();
         const userCollections = client.db("e-shopy").collection("users");
         const bookCollections = client.db("e-shopy").collection("books");
+        const borrowCollections = client.db("e-shopy").collection("borrow");
 
         /********JWT api call*******/
         app.post('/jwt', (req, res) => {
@@ -98,19 +99,44 @@ async function run() {
         })
 
 
-         /********Add book POST API*******/
-         app.post("/addbook",verifyJWT,verifyAdmin, async (req, res) => {
+        /********Add book POST API*******/
+        app.post("/addbook", verifyJWT, verifyAdmin, async (req, res) => {
             const bookDetails = req.body;
             console.log(bookDetails);
             const result = await bookCollections.insertOne(bookDetails);
             res.send(result);
-            
+
         })
-         /******** Booka GET API*******/
-         app.get("/allBooks", async (req, res) => {
+        /******** Book GET API*******/
+        app.get("/allBooks", async (req, res) => {
             const result = await bookCollections.find().toArray();
             res.send(result);
-            
+
+        })
+        /******** Single Book GET API*******/
+        app.get("/singlebook/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await bookCollections.findOne(query);
+            res.send(result);
+
+        })
+
+
+        /********Borrow Request POST API*******/
+        app.post("/borrowRequest", verifyJWT, async (req, res) => {
+            const borrowRequestDetails = req.body;
+            const result = await borrowCollections.insertOne(borrowRequestDetails);
+            res.send(result);
+
+        })
+        /********Borrow Request GET API*******/
+        app.get("/borrowRequest/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = { requesteredEmail: email }
+            const result = await borrowCollections.find(query).toArray();
+            res.send(result);
+
         })
 
 
