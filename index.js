@@ -51,6 +51,7 @@ async function run() {
         const userCollections = client.db("e-shopy").collection("users");
         const bookCollections = client.db("e-shopy").collection("books");
         const borrowCollections = client.db("e-shopy").collection("borrow");
+        const cartCollections = client.db("e-shopy").collection("cartItem");
 
         /********JWT api call*******/
         app.post('/jwt', (req, res) => {
@@ -156,7 +157,7 @@ async function run() {
 
 
         /********Borrow Request GET API*******/
-        app.get("/allborrowRequest", async (req, res) => {
+        app.get("/allborrowRequest",verifyJWT,verifyAdmin, async (req, res) => {
             try {
                 const result = await borrowCollections.find().sort({ _id: -1 }).toArray();
                 res.send(result);
@@ -197,6 +198,27 @@ async function run() {
             }
         });
 
+        /********Add To Cart POST API*******/
+        app.post("/addtocart", verifyJWT, async (req, res) => {
+            const userInfo = req.body;
+            const result = await cartCollections.insertOne(userInfo);
+            res.send(result);
+        })
+        /********Add To Cart Item GET API By Email*******/
+        app.get("/mycartItem/:email",verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = {userEmail : email}
+            const result = await cartCollections.find(query).toArray();
+            res.send(result);
+        })
+
+        /********Delete A Cart Item DELETE API By Email*******/
+        app.delete("/deleteItem/:id",verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = {_id : new ObjectId(id)}
+            const result = await cartCollections.deleteOne(query);
+            res.send(result);
+        })
 
 
 
