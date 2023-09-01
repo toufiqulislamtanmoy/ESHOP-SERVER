@@ -179,8 +179,8 @@ async function run() {
         /********Borrow Request status Update PUT API*******/
         app.put("/updateBorrowRequestStatus/:id", async (req, res) => {
             const requestId = req.params.id;
-            const { status } = req.body;
-            console.log(req.body);
+            const { status, copiesAvailable} = req.body;
+            console.log("status: ", status, "copiesAvailable: ", copiesAvailable);
             try {
                 // Update the requestStatus of the borrow request with the provided ID
                 const result = await borrowCollections.updateOne(
@@ -231,7 +231,7 @@ async function run() {
 
 
         // payment getway api
-        app.post("/create-payment-intent",verifyJWT, async (req, res) => {
+        app.post("/create-payment-intent", verifyJWT, async (req, res) => {
             const { price } = req.body;
             const amount = Math.round(price * 100);
             const paymentIntent = await stripe.paymentIntents.create({
@@ -258,6 +258,13 @@ async function run() {
             res.send({ insertResult, deleteResult });
         })
 
+        // Payment Details GET API
+        app.get("/paymentHistory/:email",verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = {email : email};
+            const result = await paymentsCollections.find(query).toArray();
+            res.send(result);
+        })
 
 
         // Send a ping to confirm a successful connection
