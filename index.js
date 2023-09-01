@@ -4,7 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_TOKEN);
 const port = process.env.PORT || 5000
 
 app.use(cors());
@@ -52,6 +52,7 @@ async function run() {
         const bookCollections = client.db("e-shopy").collection("books");
         const borrowCollections = client.db("e-shopy").collection("borrow");
         const cartCollections = client.db("e-shopy").collection("cartItem");
+        const paymentsCollections = client.db("e-shopy").collection("paymentInfo");
 
         /********JWT api call*******/
         app.post('/jwt', (req, res) => {
@@ -157,7 +158,7 @@ async function run() {
 
 
         /********Borrow Request GET API*******/
-        app.get("/allborrowRequest",verifyJWT,verifyAdmin, async (req, res) => {
+        app.get("/allborrowRequest", verifyJWT, verifyAdmin, async (req, res) => {
             try {
                 const result = await borrowCollections.find().sort({ _id: -1 }).toArray();
                 res.send(result);
@@ -205,19 +206,56 @@ async function run() {
             res.send(result);
         })
         /********Add To Cart Item GET API By Email*******/
-        app.get("/mycartItem/:email",verifyJWT, async (req, res) => {
+        app.get("/mycartItem/:email", verifyJWT, async (req, res) => {
             const email = req.params.email;
-            const query = {userEmail : email}
+            const query = { userEmail: email }
             const result = await cartCollections.find(query).toArray();
             res.send(result);
         })
 
-        /********Delete A Cart Item DELETE API By Email*******/
-        app.delete("/deleteItem/:id",verifyJWT, async (req, res) => {
+        /********Single Cart Item GET API By ID*******/
+        app.get("/singleCartItem/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id : new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
+            const result = await cartCollections.findOne(query);
+            res.send(result);
+        })
+
+        /********Delete A Cart Item DELETE API By Email*******/
+        app.delete("/deleteItem/:id", verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
             const result = await cartCollections.deleteOne(query);
             res.send(result);
+        })
+
+
+        // payment getway api
+        app.post("/create-payment-intent",verifyJWT, async (req, res) => {
+            const { price } = req.body;
+            const amount = Math.round(price * 100);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ["card"],
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+            });
+        })
+
+
+        // payment info data post api
+
+        app.post('/payments', verifyJWT, async (req, res) => {
+            const paymentInfo = req.body;
+            const insertResult = await paymentsCollections.insertOne(paymentInfo);
+
+            const deleteResult = await cartCollections.deleteOne(
+                { _id: new ObjectId(paymentInfo.cartId) }
+            );
+
+            res.send({ insertResult, deleteResult });
         })
 
 
