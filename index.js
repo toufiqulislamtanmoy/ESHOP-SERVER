@@ -176,28 +176,28 @@ async function run() {
             res.send(result);
 
         })
+
+
         /********Borrow Request status Update PUT API*******/
         app.put("/updateBorrowRequestStatus/:id", async (req, res) => {
             const requestId = req.params.id;
-            const { status, copiesAvailable} = req.body;
-            console.log("status: ", status, "copiesAvailable: ", copiesAvailable);
-            try {
-                // Update the requestStatus of the borrow request with the provided ID
-                const result = await borrowCollections.updateOne(
-                    { _id: new ObjectId(requestId) },
-                    { $set: { status } }
-                );
+            const { status, copiesAvailable, bookId } = req.body;
+            const statusUpdateResult = await borrowCollections.updateOne(
+                { _id: new ObjectId(requestId) },
+                { $set: { status } }
+            );
 
-                if (result.modifiedCount === 1) {
-                    res.status(200).json({ message: "success" });
-                } else {
-                    res.status(404).json({ message: "Borrow request not found." });
-                }
-            } catch (error) {
-                console.error(error);
-                res.status(500).json({ message: "An error occurred while updating borrow request status." });
+            if(statusUpdateResult.modifiedCount > 0 && (status === 'reject' || status === 'collected')){
+                const copyIncreResult = await bookCollections.updateOne(
+                    { _id: new ObjectId(bookId) },
+                    { $inc: { copiesAvailable: 1 } }
+                );
             }
+            res.send(statusUpdateResult);
+
         });
+
+
 
         /********Add To Cart POST API*******/
         app.post("/addtocart", verifyJWT, async (req, res) => {
@@ -259,9 +259,9 @@ async function run() {
         })
 
         // Payment Details GET API
-        app.get("/paymentHistory/:email",verifyJWT, async (req, res) => {
+        app.get("/paymentHistory/:email", verifyJWT, async (req, res) => {
             const email = req.params.email;
-            const query = {email : email};
+            const query = { email: email };
             const result = await paymentsCollections.find(query).toArray();
             res.send(result);
         })
