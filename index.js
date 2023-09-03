@@ -109,6 +109,52 @@ async function run() {
             res.send(result);
 
         })
+        /********Update book PATCH API*******/
+        app.patch("/updateBookDetails/:id", verifyJWT, verifyAdmin, async (req, res) => {
+            try {
+                const requestId = req.params.id;
+                const prevDetails = await bookCollections.findOne({ _id: new ObjectId(requestId) });
+
+                if (!prevDetails) {
+                    return res.status(404).json({ error: "Book not found" });
+                }
+
+                const bookDetails = req.body;
+                const {
+                    authorName,
+                    bookName,
+                    category,
+                    price,
+                    downloadURL,
+                    copiesAvailable,
+                } = bookDetails;
+
+                // Update the book details
+                const updatedDetails = {
+                    authorName: authorName || prevDetails.authorName,
+                    bookName: bookName || prevDetails.bookName,
+                    category: category || prevDetails.category,
+                    price: price || prevDetails.price,
+                    downloadURL: downloadURL || prevDetails.downloadURL,
+                    copiesAvailable: copiesAvailable || prevDetails.copiesAvailable,
+                    bookCoverImage: prevDetails.bookCoverImage, // Keep the existing cover image
+                    preview: prevDetails.preview, // Keep the existing preview images
+                };
+
+                // Update the book details in MongoDB
+                const result = await bookCollections.updateOne(
+                    { _id: new ObjectId(requestId) },
+                    { $set: updatedDetails }
+                );
+
+                res.send(result);
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ error: "Internal server error" });
+            }
+        });
+
+
         /******** Book GET API*******/
         app.get("/allBooks", async (req, res) => {
             const result = await bookCollections.find().toArray();
@@ -179,7 +225,7 @@ async function run() {
 
 
         /********Borrow Request status Update PUT API*******/
-        app.put("/updateBorrowRequestStatus/:id", async (req, res) => {
+        app.patch("/updateBorrowRequestStatus/:id", verifyJWT, verifyAdmin, async (req, res) => {
             const requestId = req.params.id;
             const { status, copiesAvailable, bookId } = req.body;
             const statusUpdateResult = await borrowCollections.updateOne(
@@ -187,7 +233,7 @@ async function run() {
                 { $set: { status } }
             );
 
-            if(statusUpdateResult.modifiedCount > 0 && (status === 'reject' || status === 'collected')){
+            if (statusUpdateResult.modifiedCount > 0 && (status === 'reject' || status === 'collected')) {
                 const copyIncreResult = await bookCollections.updateOne(
                     { _id: new ObjectId(bookId) },
                     { $inc: { copiesAvailable: 1 } }
