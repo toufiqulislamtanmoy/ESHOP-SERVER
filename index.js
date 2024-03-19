@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    res.send("Book Is Downloading")
+    res.send("Product Is Delivering")
 })
 
 
@@ -33,7 +33,9 @@ const verifyJWT = (req, res, next) => {
 
 
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.zvd8xno.mongodb.net/?retryWrites=true&w=majority`;
+
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.pwkxdfc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -48,11 +50,11 @@ async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         client.connect();
-        const userCollections = client.db("e-shopy").collection("users");
-        const bookCollections = client.db("e-shopy").collection("books");
-        const borrowCollections = client.db("e-shopy").collection("borrow");
-        const cartCollections = client.db("e-shopy").collection("cartItem");
-        const paymentsCollections = client.db("e-shopy").collection("paymentInfo");
+        const userCollections = client.db("e_comm").collection("users");
+        const productsCollections = client.db("e_comm").collection("products");
+        const borrowCollections = client.db("e_comm").collection("borrow");
+        const cartCollections = client.db("e_comm").collection("cartItem");
+        const paymentsCollections = client.db("e_comm").collection("paymentInfo");
 
         /********JWT api call*******/
         app.post('/jwt', (req, res) => {
@@ -74,7 +76,7 @@ async function run() {
         }
 
 
-        /********Create user*******/
+        /********Create user ✅*******/
         app.post("/users", async (req, res) => {
             const userDetails = req.body;
             const query = { email: userDetails.email };
@@ -86,7 +88,7 @@ async function run() {
             res.send(result);
         })
 
-        /********Find The user Role*******/
+        /********Find The user Role ✅*******/
 
         app.get('/role/:email', async (req, res) => {
             const email = req.params.email;
@@ -101,15 +103,15 @@ async function run() {
         })
 
 
-        /********Add book POST API*******/
-        app.post("/addbook", verifyJWT, verifyAdmin, async (req, res) => {
-            const bookDetails = req.body;
-            console.log(bookDetails);
-            const result = await bookCollections.insertOne(bookDetails);
+        /********Add Product POST API ✅*******/
+        app.post("/add-product", async (req, res) => {
+            const productDetails = req.body;
+            console.log(productDetails);
+            const result = await productsCollections.insertOne(productDetails);
             res.send(result);
 
         })
-        /********Update book PATCH API*******/
+        /********Update book PATCH API 🚗*******/
         app.patch("/updateBookDetails/:id", verifyJWT, verifyAdmin, async (req, res) => {
             try {
                 const requestId = req.params.id;
@@ -155,103 +157,30 @@ async function run() {
         });
 
 
-        /******** Book GET API*******/
-        app.get("/allBooks", async (req, res) => {
-            const result = await bookCollections.find().toArray();
+        /******** Products GET API*******/
+        app.get("/products", async (req, res) => {
+            const result = await productsCollections.find().toArray();
             res.send(result);
 
         })
-        /******** Single Book GET API*******/
-        app.get("/singlebook/:id", async (req, res) => {
+        /******** Single Product GET API ✅*******/
+        app.get("/product-details/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
-            const result = await bookCollections.findOne(query);
+            const result = await productsCollections.findOne(query);
             res.send(result);
 
         })
 
 
-        /********Borrow Request POST API*******/
-        app.post("/borrowRequest", verifyJWT, async (req, res) => {
-            const borrowRequestDetails = req.body;
 
-            // Step 1: Insert borrow request into borrowCollections
-            const borrowResult = await borrowCollections.insertOne(borrowRequestDetails);
-            if (borrowResult.insertedId) {
-                // Step 2: Decrement copiesAvailable in bookCollections
-                const bookId = borrowRequestDetails.bookId; // Assuming the book ID is provided in borrowRequestDetails
-                const book = await bookCollections.findOne({ _id: new ObjectId(bookId) });
-
-                if (book) {
-                    if (book.copiesAvailable > 0) {
-                        // Decrement copiesAvailable if there are available copies
-                        await bookCollections.updateOne(
-                            { _id: new ObjectId(bookId) },
-                            { $set: { copiesAvailable: book.copiesAvailable - 1 } }
-                        );
-
-                        res.send({ message: "success" });
-                    } else {
-                        res.status(400).send({ error: "No available copies of the book." });
-                    }
-                } else {
-                    res.status(404).send({ error: "Book not found." });
-                }
-            } else {
-                res.status(500).send({ error: "Failed to create borrow request." });
-            }
-        });
-
-
-        /********Borrow Request GET API*******/
-        app.get("/allborrowRequest", verifyJWT, verifyAdmin, async (req, res) => {
-            try {
-                const result = await borrowCollections.find().sort({ _id: -1 }).toArray();
-                res.send(result);
-            } catch (error) {
-                console.error(error);
-                res.status(500).send("Error fetching borrow requests.");
-            }
-        });
-
-        /********Borrow Request GET API by email*******/
-        app.get("/borrowRequest/:email", verifyJWT, async (req, res) => {
-            const email = req.params.email;
-            const query = { requesteredEmail: email }
-            const result = await borrowCollections.find(query).toArray();
-            res.send(result);
-
-        })
-
-
-        /********Borrow Request status Update PUT API*******/
-        app.patch("/updateBorrowRequestStatus/:id", verifyJWT, verifyAdmin, async (req, res) => {
-            const requestId = req.params.id;
-            const { status, copiesAvailable, bookId } = req.body;
-            const statusUpdateResult = await borrowCollections.updateOne(
-                { _id: new ObjectId(requestId) },
-                { $set: { status } }
-            );
-
-            if (statusUpdateResult.modifiedCount > 0 && (status === 'reject' || status === 'collected')) {
-                const copyIncreResult = await bookCollections.updateOne(
-                    { _id: new ObjectId(bookId) },
-                    { $inc: { copiesAvailable: 1 } }
-                );
-            }
-            res.send(statusUpdateResult);
-
-        });
-
-
-
-        /********Add To Cart POST API*******/
+        /********Add To Cart POST API ✅*******/
         app.post("/addtocart", verifyJWT, async (req, res) => {
             const userInfo = req.body;
             const result = await cartCollections.insertOne(userInfo);
             res.send(result);
         })
-        /********Add To Cart Item GET API By Email*******/
+        /********Add To Cart Item GET API By Email ✅*******/
         app.get("/mycartItem/:email", verifyJWT, async (req, res) => {
             const email = req.params.email;
             const query = { userEmail: email }
@@ -267,7 +196,7 @@ async function run() {
             res.send(result);
         })
 
-        /********Delete A Cart Item DELETE API By Email*******/
+        /********Delete A Cart Item DELETE API By Email ✅*******/
         app.delete("/deleteItem/:id", verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
