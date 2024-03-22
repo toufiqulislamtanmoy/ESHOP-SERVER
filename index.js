@@ -219,10 +219,10 @@ async function run() {
 
 
 
-        // payment getway api
-        app.post("/create-payment-intent", verifyJWT, async (req, res) => {
-            const { price } = req.body;
-            const amount = Math.round(price * 100);
+        // payment getway api ✅
+        app.post("/create-payment-intent", async (req, res) => {
+            const { product_price } = req.body;
+            const amount = Math.round(product_price * 100);
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: "usd",
@@ -234,9 +234,9 @@ async function run() {
         })
 
 
-        // payment info data post api
+        // payment info data post api ✅
 
-        app.post('/payments', verifyJWT, async (req, res) => {
+        app.post('/payments', async (req, res) => {
             const paymentInfo = req.body;
             const insertResult = await paymentsCollections.insertOne(paymentInfo);
 
@@ -248,7 +248,7 @@ async function run() {
         })
 
         // Payment Details GET API
-        app.get("/paymentHistory/:email", verifyJWT, async (req, res) => {
+        app.get("/paymentHistory/:email", async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const result = await paymentsCollections.find(query).toArray();
