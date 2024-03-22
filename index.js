@@ -111,6 +111,49 @@ async function run() {
             res.send(result);
 
         })
+
+        /******** Single Product GET API ✅*******/
+        app.get("/product-details/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await productsCollections.findOne(query);
+            res.send(result);
+
+        })
+
+
+        /******** Products GET API ✅*******/
+        app.get("/products", async (req, res) => {
+            const result = await productsCollections.find().toArray();
+            res.send(result);
+
+        })
+
+
+        /********Add To Cart POST API ✅*******/
+        app.post("/addtocart", verifyJWT, async (req, res) => {
+            const userInfo = req.body;
+            const result = await cartCollections.insertOne(userInfo);
+            res.send(result);
+        })
+
+        /********Add To Cart Item GET API By Email ✅*******/
+        app.get("/mycartItem/:email", verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { userEmail: email }
+            const result = await cartCollections.find(query).toArray();
+            res.send(result);
+        })
+
+        /********Delete A Cart Item DELETE API By Email ✅*******/
+        app.delete("/deleteItem/:id", verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await cartCollections.deleteOne(query);
+            res.send(result);
+        })
+
+
         /********Update book PATCH API 🚗*******/
         app.patch("/updateBookDetails/:id", verifyJWT, verifyAdmin, async (req, res) => {
             try {
@@ -157,36 +200,13 @@ async function run() {
         });
 
 
-        /******** Products GET API*******/
-        app.get("/products", async (req, res) => {
-            const result = await productsCollections.find().toArray();
-            res.send(result);
-
-        })
-        /******** Single Product GET API ✅*******/
-        app.get("/product-details/:id", async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) }
-            const result = await productsCollections.findOne(query);
-            res.send(result);
-
-        })
 
 
 
-        /********Add To Cart POST API ✅*******/
-        app.post("/addtocart", verifyJWT, async (req, res) => {
-            const userInfo = req.body;
-            const result = await cartCollections.insertOne(userInfo);
-            res.send(result);
-        })
-        /********Add To Cart Item GET API By Email ✅*******/
-        app.get("/mycartItem/:email", verifyJWT, async (req, res) => {
-            const email = req.params.email;
-            const query = { userEmail: email }
-            const result = await cartCollections.find(query).toArray();
-            res.send(result);
-        })
+
+
+
+
 
         /********Single Cart Item GET API By ID*******/
         app.get("/singleCartItem/:id", async (req, res) => {
@@ -196,13 +216,7 @@ async function run() {
             res.send(result);
         })
 
-        /********Delete A Cart Item DELETE API By Email ✅*******/
-        app.delete("/deleteItem/:id", verifyJWT, async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: new ObjectId(id) }
-            const result = await cartCollections.deleteOne(query);
-            res.send(result);
-        })
+
 
 
         // payment getway api
