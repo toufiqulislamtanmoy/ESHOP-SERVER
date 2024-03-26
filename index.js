@@ -106,6 +106,7 @@ async function run() {
         /********Add Product POST API ✅*******/
         app.post("/add-product", async (req, res) => {
             const productDetails = req.body;
+            console.log(productDetails)
             console.log(productDetails);
             const result = await productsCollections.insertOne(productDetails);
             res.send(result);
@@ -154,42 +155,35 @@ async function run() {
         })
 
 
-        /********Update book PATCH API 🚗*******/
-        app.patch("/updateBookDetails/:id", verifyJWT, verifyAdmin, async (req, res) => {
+        /********Update book PATCH API ✅*******/
+        app.patch("/update-product/:id", async (req, res) => {
             try {
                 const requestId = req.params.id;
-                const prevDetails = await bookCollections.findOne({ _id: new ObjectId(requestId) });
+                const prevDetails = await productsCollections.findOne({ _id: new ObjectId(requestId) });
 
                 if (!prevDetails) {
                     return res.status(404).json({ error: "Book not found" });
                 }
 
-                const bookDetails = req.body;
-                const {
-                    authorName,
-                    bookName,
-                    category,
-                    price,
-                    downloadURL,
-                    copiesAvailable,
-                } = bookDetails;
+                const productDetails = req.body;
+
 
                 // Update the book details
-                const updatedDetails = {
-                    authorName: authorName || prevDetails.authorName,
-                    bookName: bookName || prevDetails.bookName,
-                    category: category || prevDetails.category,
-                    price: price || prevDetails.price,
-                    downloadURL: downloadURL || prevDetails.downloadURL,
-                    copiesAvailable: copiesAvailable || prevDetails.copiesAvailable,
-                    bookCoverImage: prevDetails.bookCoverImage, // Keep the existing cover image
-                    preview: prevDetails.preview, // Keep the existing preview images
-                };
+                // const updatedDetails = {
+                //     authorName: authorName || prevDetails.authorName,
+                //     bookName: bookName || prevDetails.bookName,
+                //     category: category || prevDetails.category,
+                //     price: price || prevDetails.price,
+                //     downloadURL: downloadURL || prevDetails.downloadURL,
+                //     copiesAvailable: copiesAvailable || prevDetails.copiesAvailable,
+                //     bookCoverImage: prevDetails.bookCoverImage, // Keep the existing cover image
+                //     preview: prevDetails.preview, // Keep the existing preview images
+                // };
 
                 // Update the book details in MongoDB
-                const result = await bookCollections.updateOne(
+                const result = await productsCollections.updateOne(
                     { _id: new ObjectId(requestId) },
-                    { $set: updatedDetails }
+                    { $set: productDetails }
                 );
 
                 res.send(result);
